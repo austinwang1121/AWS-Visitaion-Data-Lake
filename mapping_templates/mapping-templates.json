@@ -1,5 +1,7 @@
+#set($payload = "$input.json('$.Data')
+")
 {
     "StreamName": "$input.params('stream-name')",
-    "Data": "$util.base64Encode($input.json('$.Data'))",
+    "Data": "$util.base64Encode($payload)",
     "PartitionKey": "$input.path('$.PartitionKey')"
 }

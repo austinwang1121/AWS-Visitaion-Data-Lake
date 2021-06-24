@@ -1,44 +1,67 @@
 import json
 import urllib.request
-import urllib.parse
-import base64
+import boto3
+from io import BytesIO
+from gzip import GzipFile
+from random import randint
+# generate random integer values
+from random import seed
+from random import choice
+# seed random number generator
+from datetime import datetime
 
 def lambda_handler(event, context):
+    now = datetime.now()
+    seed(now)
+
+    random_migration = ["migration-1", "migration-2", "migration-3"]
+    random_container = ["container-a", "container-b", "container-c", "null"]
+    random_transfer = ["transfer-i", "transfer-ii", "transfer-iii", "null"]
+    migration_id = choice(random_migration)
+    container_id = choice(random_container)
+    transfer_id = choice(random_transfer)
+    if container_id == "null":
+            transfer_id = "null"
+
     
-    def generate_visitation_data():
-        random_points = [[42.28835693, -83.75088172], [42.297895,-83.7150378], [42.29003769,-83.70629844],[42.27663603,-83.74221037],[42.30309661,-83.72258449],[42.30812748,-83.74047564],[42.28422992,-83.74778329],[42.29448473,-83.76452435],[42.27514639,-83.71996192],[42.27479275,-83.70859713]]
+    bucket_name = 'log-data-structured'
+
+    
+    file_name = now_string.replace('.','_')
+    file_name = file_name.replace(':', '_')
+    file_name = file_name.replace('-', '_')
+    file_name += '.json'
+    lambda_path = '/tmp/' + file_name
+    s3_path = migration_id +  '/' + container_id + '/' + transfer_id + '/' + file_name        
+    
+    def generate_data():
+        random_level = ["ERROR", "INFO", "WARNING"]
+        random_data_class = ["PII", "UGC", "ATLASSIAN"]
+        random_data_type = ["InMigration", "PostMigrationAction", "PostMigrationReport", "PreMigrationReport"]
         random_datetime = [["2019-08-13 15:10:27 +0000", "2019-08-13 15:15:27 +0000"], ["2019-08-13 15:07:27 +0000", "2019-08-13 15:12:27 +0000"], ["2019-08-13 15:09:27 +0000", "2019-08-13 15:14:27 +0000"], ["2019-08-13 15:04:27 +0000", "2019-08-13 15:09:27 +0000"], ["2019-08-13 15:02:27 +0000", "2019-08-13 15:07:27 +0000"], ["2019-08-13 15:12:27 +0000", "2019-08-13 15:17:27 +0000"], ["2019-08-13 15:05:27 +0000", "2019-08-13 15:10:27 +0000"], ["2019-08-13 15:05:27 +0000", "2019-08-13 15:10:27 +0000"], ["2019-08-13 15:05:27 +0000", "2019-08-13 15:10:27 +0000"], ["2019-08-13 15:05:27 +0000", "2019-08-13 15:10:27 +0000"]]
         data_list = []
-        for i in range(10):
-            arrival = random_datetime[i][0]
-            departure = random_datetime[i][1]
-            duration = 5
-            horizontal_accuracy = 5.0
-            latitude = random_points[i][0]
-            longitude = random_points[i][1]
-            uuid = "3B625DE8-A0FF-4329-850B-5539F9475482"
-            datum = {"arrival": arrival, "departure": departure, "duration": duration, "horizontal_accuracy": horizontal_accuracy, "latitude": latitude, "longitude": longitude, "uuid": uuid}
+        
+        for i in random.randint(10,20):
+            timestamp = choice(choice(random_datetime))
+            level = choice(random_level)
+            data_type = choice(random_data_type)
+            data_class = choice(random_data_class)
+            message=level + ": " + "log about " + migration_id + " " + container_id + " " + transfer_id
+            datum = {"migrationId": migration_id, "containerId": container_id, "transferId": transfer_id, "dataClass": data_class, "createdDatetime":timestamp, "level":level, "dataType":data_type, "message": message}
             data_list.append(datum)
         return data_list
-    
-    
-    generated_data = generate_visitation_data()
 
-    DATA = {"Data":generated_data, "PartitionKey":1}
-    print("RAW DATA:", DATA)
-    DATA = json.dumps(DATA).encode("utf-8")
 
-    req = urllib.request.Request(url='https://5q2qy4mmbf.execute-api.us-east-1.amazonaws.com/test/streams/event-pipe/record', data=DATA, method='PUT')
-    req.add_header('Content-Type', 'application/json')
-    f = urllib.request.urlopen(req)
-    
-    raw_data = f.read()
-    encoding = f.info().get_content_charset('utf8')  # JSON default
-    data = json.loads(raw_data.decode(encoding))
-    print(data)
-
+    s3 = boto3.client("s3")
     
     
+    with open(lambda_path, 'w') as f:
+        for point in generate_data():
+            f.write(json.dumps(point))
+            f.write("\n")
+    
+    s3.upload_file(lambda_path, bucket_name, s3_path)
+        
     
     return {
         'statusCode': 200,
